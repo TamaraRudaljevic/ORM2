@@ -38,13 +38,14 @@ int wifi_alive = 1;
 unsigned char wifi_ack = 0;
 unsigned char eth_ack = 0;
 
+
 int eth_finished = 0, wifi_finished = 0;
 
-unsigned char *memory;
-unsigned char *received;
-int bytes;
-int next_packet = 0;
-int packet_no;
+unsigned char *memory; 			//buffer za citanje slike
+unsigned char *received;		//sprimanje ACK bita
+int bytes;				//broj procitanih bajtova
+int next_packet = 0;			
+int packet_no;				//ukupan broj paketa
 int finished = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 char error_buffer[PCAP_ERRBUF_SIZE];
@@ -55,10 +56,11 @@ char error_buffer[PCAP_ERRBUF_SIZE];
 
 void loop_handler(unsigned char *param, const struct pcap_pkthdr *packet_header, const unsigned char *packet_data) {
 	packet *p = (packet*) packet_data;
-	int pack = *(int*) param;
+	int pack = *(int*) param;	//redni broj paketa
 
 	/*   Provera da li je paket poslat   */
-	if (strcmp((char*) p->data, "ACK") == 0 && pack == ntohs(p->cus_h.seq_no)) {
+	if (strcmp((char*) p->data, "ACK") == 0 && pack == ntohs(p->cus_h.seq_no)) {  //ntohs - function converts the unsigned short integer netshort from network byte order to host byte order. 
+										      //big and little endian, MSB i LSB biti u razlicitim arhitekturama
 		received[pack] = 1;
 		printf("ACK for %u\n", ntohs(p->cus_h.seq_no));
 	}
@@ -93,6 +95,7 @@ void *wifi_thread_function(void *param) {
 		ip_header ih = create_ip_header(MAX_DATA_SIZE, src_wifi_ip_address, dst_wifi_ip_address);
 		udp_header uh = create_udp_header(SENDER_PORT, RECEIVER_PORT, MAX_DATA_SIZE);
 		custom_header ch = create_custom_header(pack);
+
 		size_t data_size = (pack != packet_no - 1) ? MAX_DATA_SIZE : bytes % MAX_DATA_SIZE;        // velicina slike      
 		size_t packet_size = data_size + sizeof(headers);                                          // velicina slike + header-a
 		packet *p = create_packet(eh, ih, uh, ch, memory + MAX_DATA_SIZE * pack, data_size);       // memory - iscitani biti iz slike
@@ -118,9 +121,10 @@ void *wifi_thread_function(void *param) {
 				}
 			/*   Ukoliko je wifi thread zarsio ranije slanje se preusmerava i na eth, pa se koriste dva thread-a    */
 			} else if (wifi_finished) {
-				pcap_sendpacket(eth_device_handle, (unsigned char*) p, packet_size);
+				pcap_sendpacket(eth_device_handle, (unsigned char*) p, packet_size); 		//sends a raw packet through the network interface,  returns 0 on success
 				printf("Sent packet %d over eth (wifi dead)\n", pack);
-				pcap_dispatch(eth_device_handle, 1, loop_handler, (unsigned char *)&pack);
+				pcap_dispatch(eth_device_handle, 1, loop_handler, (unsigned char *)&pack); 	//returns the number of packets processed on success; this can be 0 if no packets were read 
+														//from a live capture 		
 				if (!received[pack]) {
 					usleep(SLEEP_TIMEOUT);
 				}
@@ -188,8 +192,6 @@ void *eth_thread_function(void *param) {
 
 
 /*   Slanje velicine paketa sa zglavljima u zavisoti od eth-a i wifi-ja   */
-
-
 void wifi_send_file_size(pcap_t *device_handle) {
 	ethernet_header eh = create_eth_header(dst_wifi_mac_address, src_wifi_mac_address);
 	ip_header ih = create_ip_header(sizeof(int), src_wifi_ip_address, dst_wifi_ip_address);
@@ -242,12 +244,12 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Open the capture device
-	if ((eth_device_handle = pcap_open_live(eth_device->name, // name of the device
-											65536,			  // portion of the packet to capture (65536 guarantees that the whole packet will be captured on all the link layers)
-											1,				  // promiscuous mode
-											TIMEOUT,		  // read timeout
-											error_buffer	  // buffer where error message is stored
-											)) == NULL)	{
+	if ((eth_device_handle = pcap_open_live(eth_device->name, 	// name of the device
+						65536,			// portion of the packet to capture (65536 guarantees that the whole packet will be 										//captured on all the link layers)
+						1,			// promiscuous mode (all packet)
+						TIMEOUT,		// read timeout
+						error_buffer	  	// buffer where error message is stored
+						)) == NULL)	{
 		printf("\nUnable to open the adapter. %s is not supported by libpcap/WinPcap\n", eth_device->name);
 		pcap_freealldevs(devices);
 		return -1;
@@ -263,7 +265,9 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	if (pcap_setnonblock(eth_device_handle, 1, error_buffer) == -1) {
+	if (pcap_setnonblock(eth_device_handle, 1, error_buffer) == -1) {  //puts a capture handle into ``non-blocking'' mode,
+      									   // or takes it out of ``non-blocking'' mode, depending on whether the
+       									   //nonblock argument is non-zero or zero. packets doesn't wait for the other packets to be sent 
 		return -1;
 	}
 
@@ -278,11 +282,11 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Open the capture device
-	if ((wifi_device_handle = pcap_open_live(wifi_device->name, // name of the device
-											 65536,				// portion of the packet to capture (65536 guarantees that the whole packet will be captured on all the link layers)
-											 1,					// promiscuous mode
+	if ((wifi_device_handle = pcap_open_live(wifi_device->name, 							// name of the device
+											 65536,				// portion of the packet to capture (65536 guarantees that the whole packet will be 																//captured on all the link layers)
+											 1,				// promiscuous mode
 											 TIMEOUT,			// read timeout
-											 error_buffer		// buffer where error message is stored
+											 error_buffer			// buffer where error message is stored
 											 )) == NULL) {
 		printf("\nUnable to open the adapter. %s is not supported by libpcap/WinPcap\n", wifi_device->name);
 		pcap_freealldevs(devices);
@@ -307,7 +311,7 @@ int main(int argc, char *argv[]) {
 	FILE *f = fopen(argv[1], "rb");
 
 	fseek(f, 0L, SEEK_END);
-    	bytes = ftell(f);
+    	bytes = ftell(f); 		//Returns the current value of the position indicator of the stream.
     	fseek(f, 0L, SEEK_SET);
 
     	memory = (unsigned char*) malloc(bytes);

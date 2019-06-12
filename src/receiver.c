@@ -99,7 +99,7 @@ void *eth_thread_function(void *param) {
 	return NULL;
 }
 
-/*   Velicina zaspakovanog podatka, same slike, i provera da li je velicina u redu   */
+/*   Velicina raspakovanog podatka, same slike, i provera da li je velicina u redu   */
 void get_size(unsigned char *param, const struct pcap_pkthdr *packet_header, const unsigned char *packet_data) {
 	packet *p = (packet*) packet_data;
 	int s = *(int*)(p->data);
@@ -143,12 +143,12 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Open the capture device
-	if ((eth_device_handle = pcap_open_live(eth_device->name, // name of the device
-											65536,			  // portion of the packet to capture (65536 guarantees that the whole packet will be captured on all the link layers)
-											1,				  // promiscuous mode
-											TIMEOUT,		  // read timeout
-											error_buffer	  // buffer where error message is stored
-											)) == NULL) {
+	if ((eth_device_handle = pcap_open_live(eth_device->name, 		// name of the device
+						65536,			  	// portion of the packet to capture (65536 guarantees that the whole packet will be captured on all the link layers)
+						1,				// promiscuous mode
+						TIMEOUT,		  	// read timeout
+						error_buffer	  		// buffer where error message is stored
+						)) == NULL) {
 		printf("\nUnable to open the adapter. %s is not supported by libpcap/WinPcap\n", eth_device->name);
 		pcap_freealldevs(devices);
 		return -1;
@@ -176,11 +176,11 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Open the capture device
-	if ((wifi_device_handle = pcap_open_live(wifi_device->name, // name of the device
-											 65536,				// portion of the packet to capture (65536 guarantees that the whole packet will be captured on all the link layers)
-											 1,					// promiscuous mode
-											 TIMEOUT,			// read timeout
-											 error_buffer		// buffer where error message is stored
+	if ((wifi_device_handle = pcap_open_live(wifi_device->name, 		// name of the device
+						65536,				// portion of the packet to capture (65536 guarantees that the whole packet will be captured on all the link layers)
+						1,				// promiscuous mode
+						TIMEOUT,			// read timeout
+						error_buffer			// buffer where error message is stored
 											 )) == NULL) {
 		printf("\nUnable to open the adapter. %s is not supported by libpcap/WinPcap\n", wifi_device->name);
 		pcap_freealldevs(devices);

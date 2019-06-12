@@ -313,7 +313,7 @@ int main(int argc, char *argv[]) {
 	fseek(f, 0L, SEEK_END);
     	bytes = ftell(f); 		//Returns the current value of the position indicator of the stream.
     	fseek(f, 0L, SEEK_SET);
-
+		
     	memory = (unsigned char*) malloc(bytes);
 
     	fread(memory, sizeof(unsigned char), bytes, f);
